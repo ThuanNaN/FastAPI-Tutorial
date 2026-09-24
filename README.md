@@ -2,6 +2,22 @@
 
 VLAI FastAPI Tutorial — khóa học FastAPI đầy đủ bằng tiếng Việt, kèm **project tổng hợp** để áp dụng toàn bộ kiến thức từ topic 1 đến topic 17, và deploy ở topic cuối cùng.
 
+## Mô tả project
+
+Đây là một **REST API quản lý sách (Bookstore API)** xây dựng từng bước xuyên suốt khóa học — mỗi topic thêm một tính năng mới vào project:
+
+| Tính năng | Description |
+|---|---|
+| **Auth** | Đăng nhập JWT (HS256), phân quyền admin/user |
+| **Books CRUD** | Tạo, đọc, cập nhật, xoá sách với validation & search/filter |
+| **Upload** | Tải lên ảnh bìa sách, giới hạn dung lượng |
+| **Streaming** | WebSocket chat, StreamingResponse, BackgroundTasks |
+| **DB** | SQLAlchemy 2.0 + SQLite (dev) / PostgreSQL (production) |
+| **Tests** | pytest với TestClient, DB test tách biệt |
+| **Docker** | Docker + docker-compose deploy production với nginx |
+
+Code trong repo là project bạn xây từng bước qua mỗi topic — không phải project rỗng rồi fill vào sau, mà là code chạy được ngay từ đầu mỗi topic.
+
 ## Cấu trúc khóa học
 
 Khóa học gồm **19 phần** theo 6 chặng. Mỗi phần có file code chạy được nằm trong repo này (thư mục `app/`), giải thích vì sao — đó chính là project "Bookstore API" bạn sẽ xây từng bước:
@@ -75,33 +91,90 @@ FastAPI-Tutorial/
 │   ├── __init__.py
 │   ├── main.py            # app factory, middleware, CORS, include router
 │   ├── config.py          # pydantic-settings (12-factor)
-│   ├── database.py        # SQLAlchemy engine/session
-│   ├── models.py          # ORM models
+│   ├── database.py        # SQLAlchemy engine/session, Base
+│   ├── models.py          # ORM models (User, Book)
 │   ├── schemas.py         # Pydantic schemas (in/out)
-│   ├── deps.py            # Dependency Injection
+│   ├── deps.py            # Dependency Injection (get_db, auth, role check)
 │   ├── security.py        # hash mật khẩu + JWT
-│   ├── exceptions.py      # custom exception handler
-│   ├── middleware.py      # custom middleware
+│   ├── exceptions.py      # custom exception handlers
+│   ├── middleware.py      # custom middleware (process time header)
 │   ├── routers/           # APIRouter theo nghiệp vụ
-│   │   ├── auth.py
-│   │   ├── users.py
-│   │   ├── books.py
-│   │   ├── uploads.py
-│   │   ├── streaming.py
-│   │   └── admin.py
-│   └── services/          # logic nghiệp vụ
-│       └── book_service.py
+│   │   ├── __init__.py
+│   │   ├── auth.py        # JWT login, /me
+│   │   ├── users.py       # user management
+│   │   ├── books.py       # CRUD books với validation & query params
+│   │   ├── uploads.py     # UploadFile, size limit
+│   │   ├── streaming.py   # WebSocket, StreamingResponse, BackgroundTasks
+│   │   └── admin.py       # admin-only routes
+│   ├── services/          # business logic layer
+│   │   └── book_service.py
+│   └── scripts/
+│       └── init_db.py     # seed database demo (users + books)
 ├── tests/                 # pytest (topic 16)
-│   ├── conftest.py
+│   ├── conftest.py        # TestClient setup, fixtures, test DB
 │   ├── test_auth.py
 │   ├── test_books.py
 │   └── test_upload.py
-├── static/                # static files (topic 8)
-├── Dockerfile             # deploy (topic 19)
+├── uploads/               # runtime — file uploads được lưu ở đây
+├── requirements.txt       # pip dependencies (dùng cho Docker build)
+├── Dockerfile             # deploy (topic 19) — Python 3.12-slim
 ├── docker-compose.yml
 ├── nginx.conf
-├── pyproject.toml
-├── requirements.txt
+├── pyproject.toml         # package config + dev dependencies
 ├── .env.example
 └── README-deploy.md
+```
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Framework | **FastAPI** 0.115+ |
+| ORM | **SQLAlchemy** 2.0 |
+| Validation | **Pydantic** v2 |
+| Config | **pydantic-settings** (12-factor) |
+| Auth | **JWT** (HS256) + **bcrypt** password hashing |
+| Database | **SQLite** (dev) / **PostgreSQL** (production) |
+| Async | `asyncio`, `aiofiles` |
+| Testing | **pytest** + **httpx** TestClient |
+| Container | **Docker** + **docker-compose** |
+| Static files | FastAPI `StaticFiles` + `UploadFile` |
+
+## Cấu hình (`.env`)
+
+```env
+DATABASE_URL=sqlite:///./bookstore.db
+SECRET_KEY=change-me-to-a-long-random-string
+DEBUG=false
+```
+
+Các trường cấu hình trong `app/config.py`:
+
+| Biến | Mặc định | Mô tả |
+|---|---|---|
+| `app_name` | `"FastAPI Bookstore"` | Tên ứng dụng |
+| `debug` | `False` | Chế độ debug |
+| `database_url` | `sqlite:///./bookstore.db` | Connection string CSDL |
+| `secret_key` | `CHANGE-ME-KEY-EXTERNAL` | Khóa ký JWT (≥ 32 ký tự) |
+| `algorithm` | `HS256` | Thuật toán JWT |
+| `access_token_expire_minutes` | `60` | Thời hạn access token |
+| `max_upload_size_mb` | `10` | Dung lượng file upload tối đa |
+
+## Phát triển & đóng gói
+
+- **Dev**: `pip install -e ".[dev]"` dùng `pyproject.toml`
+- **Docker**: `requirements.txt` được copy vào image (nhẹ hơn cho build)
+- **Dockerfile** dùng `python:3.12-slim`
+- **docker-compose.yml** có cả service app + PostgreSQL để test production-like
+
+## Chạy test
+
+Tests dùng `TestClient` với database in-memory SQLite tạm thời (không ảnh hưởng đến DB chính). `conftest.py` thiết lập test fixtures: `client`, `test_db`, `seeded_db`.
+
+```bash
+# Chạy tất cả tests
+pytest -v
+
+# Chạy test cụ thể
+pytest tests/test_books.py -v
 ```

@@ -2,6 +2,13 @@
 
 VLAI FastAPI Tutorial — khóa học FastAPI đầy đủ bằng tiếng Việt, kèm **project tổng hợp** để áp dụng toàn bộ kiến thức từ topic 1 đến topic 17, và deploy ở topic cuối cùng.
 
+Khóa học: https://vlai.aivietnam.edu.vn/tutorials/fastapi-tutorial
+
+```
+Client ──▶ middleware (CORS, thời gian xử lý) ──▶ router ──▶ Pydantic (kiểm tra) ──▶ handler ──▶ SQLAlchemy ──▶ SQLite / PostgreSQL
+                                                    └─ deps.py: get_db, xác thực JWT, kiểm tra role
+```
+
 ## Mô tả project
 
 Đây là một **REST API quản lý sách (Bookstore API)** xây dựng từng bước xuyên suốt khóa học — mỗi topic thêm một tính năng mới vào project:
